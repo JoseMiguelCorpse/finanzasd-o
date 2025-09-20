@@ -19,7 +19,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage
     { id: 'transactions', name: 'Transacciones', icon: '💰' },
     { id: 'goals', name: 'Metas', icon: '🎯' },
     { id: 'statistics', name: 'Estadísticas', icon: '📈' },
-    { id: 'recurring', name: 'Recurrentes', icon: '🔄' }
+    { id: 'recurring', name: 'Recurrentes', icon: '🔄' },
+    { id: 'profile', name: 'Mi Perfil', icon: '👤' }
   ];
 
   return (

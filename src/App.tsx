@@ -9,6 +9,7 @@ import { StatisticsPage } from './components/Statistics/StatisticsPage';
 import { GoalsPage } from './components/Goals/GoalsPage';
 import { RecurringPage } from './components/Recurring/RecurringPage';
 import { AlertsPage } from './components/Alerts/AlertsPage';
+import { ProfilePage } from './components/Profile/ProfilePage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu } from 'lucide-react';
 
@@ -69,6 +70,8 @@ const AppContent: React.FC = () => {
         return <RecurringPage />;
       case 'alerts':
         return <AlertsPage />;
+      case 'profile':
+        return <ProfilePage />;
       default:
         return <Dashboard />;
     }

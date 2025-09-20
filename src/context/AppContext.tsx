@@ -15,6 +15,7 @@ interface AppContextType {
   isAuthenticated: boolean;
   isDemoMode: boolean;
   isLoading: boolean;
+  updateProfile: (updates: Partial<User>) => Promise<void>;
   
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name: string) => Promise<boolean>;
@@ -442,9 +443,30 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     return { totalIncome, totalExpenses, totalSavings, balance };
   };
 
+  const updateProfile = async (updates: Partial<User>) => {
+    if (!currentUser) return;
+    if (isDemoMode) {
+      setCurrentUser(prev => prev ? { ...prev, ...updates } : null);
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', currentUser.id);
+      
+      if (error) throw error;
+      
+      setCurrentUser(prev => prev ? { ...prev, ...updates } : null);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  };
+
   const contextValue: AppContextType = {
     currentUser, isAuthenticated, isDemoMode, isLoading,
-    login, register, logout,
+    login, register, logout, updateProfile,
     transactions, savingGoals, recurringTransactions, smartAlerts,
     addTransaction, updateTransaction, deleteTransaction, approveTransaction, rejectTransaction,
     addSavingGoal, updateSavingGoal, deleteSavingGoal,
