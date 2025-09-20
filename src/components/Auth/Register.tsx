@@ -39,16 +39,22 @@ export const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
     }
 
     try {
-      await register(formData.email, formData.password, formData.name);
-      setSuccessMessage('¡Registro exitoso! Revisa tu email para confirmar tu cuenta.');
+      const result = await register(formData.email, formData.password, formData.name);
+
+      if (!result.success) {
+        setError(result.message || 'No se pudo completar el registro.');
+        return;
+      }
+
+      setSuccessMessage(result.message || 'Registro exitoso! Revisa tu email para confirmar tu cuenta.');
       setFormData({ name: '', email: '', password: '', confirmPassword: '' });
     } catch (err: any) {
-      if (err.name === 'AuthApiError' && err.status === 429) {
+      if (err?.name === 'AuthApiError' && err?.status === 429) {
         setError('Has intentado registrarte demasiadas veces. Por favor, espera un momento antes de volver a intentarlo.');
-      } else if (err.message && err.message.toLowerCase().includes('user already registered')) {
-        setError('Este email ya está registrado. Intenta iniciar sesión.');
+      } else if (err?.message && err.message.toLowerCase().includes('user already registered')) {
+        setError('Este email ya esta registrado. Intenta iniciar sesion.');
       } else {
-        setError(err.message || 'Error al registrarse. Por favor, inténtalo de nuevo.');
+        setError(err?.message || 'Error al registrarse. Por favor, intentalo de nuevo.');
       }
     } finally {
       setIsLoading(false);

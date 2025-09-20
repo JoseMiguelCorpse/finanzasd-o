@@ -10,6 +10,21 @@ import {
   demoCredentials 
 } from '../utils/mockData';
 
+const generateId = () => {
+  if (typeof globalThis !== 'undefined' && (globalThis as any).crypto?.randomUUID) {
+    return (globalThis as any).crypto.randomUUID();
+  }
+  return `id-${Math.random().toString(36).slice(2, 11)}`;
+};
+
+const sortTransactionsByDate = (items: Transaction[]) =>
+  [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+const sanitizePayload = <T extends Record<string, unknown>>(payload: T) =>
+  Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
+
 interface AppContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
@@ -18,7 +33,8 @@ interface AppContextType {
   updateProfile: (updates: Partial<User>) => Promise<void>;
   
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, name: string) => Promise<boolean>;
+  register: (email: string, password: string, name: string) => Promise<{ success: boolean; message?: string }>;
+
   logout: () => Promise<void>;
   
   transactions: Transaction[];
@@ -132,16 +148,34 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         return false;
       }
 
-      // Cargar el perfil del usuario
-      const { data: profile, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', data.user.id)
         .single();
 
+      let profile = profileData;
+
       if (profileError || !profile) {
-        console.error('Error loading profile:', profileError);
-        return false;
+        const fallbackProfile = {
+          id: data.user.id,
+          email: data.user.email ?? email,
+          name: (data.user.user_metadata as any)?.name ?? data.user.email ?? 'Sin nombre',
+          avatar: (data.user.user_metadata as any)?.avatar ?? null
+        };
+
+        const { data: createdProfile, error: createProfileError } = await supabase
+          .from('profiles')
+          .upsert(fallbackProfile)
+          .select()
+          .single();
+
+        if (createProfileError || !createdProfile) {
+          console.error('Error creating profile after login:', createProfileError);
+          return false;
+        }
+
+        profile = createdProfile;
       }
 
       // Establecer el usuario actual
@@ -165,20 +199,65 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (email: string, password: string, name: string): Promise<boolean> => {
+  const register = async (
+    email: string,
+    password: string,
+    name: string
+  ): Promise<{ success: boolean; message?: string }> => {
     try {
       const { data, error } = await supabase.auth.signUp({
-        email, 
-        password, 
-        options: { 
-          data: { name } 
+        email,
+        password,
+        options: {
+          data: { name }
         }
       });
-      if (error) throw error;
-      return !!data.user;
-    } catch (error) {
+
+      if (error) {
+        console.error('Registration error:', error);
+        const message =
+          error.status === 429
+            ? 'Has intentado registrarte demasiadas veces. Por favor, espera antes de volver a intentarlo.'
+            : error.message || 'No se pudo completar el registro.';
+        return { success: false, message };
+      }
+
+      if (!data.user) {
+        return {
+          success: false,
+          message: 'No se pudo crear la cuenta. Intentalo de nuevo en unos minutos.'
+        };
+      }
+
+      if (data.session) {
+        const profilePayload = {
+          id: data.user.id,
+          email,
+          name,
+          avatar: (data.user.user_metadata as any)?.avatar ?? null
+        };
+
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert(profilePayload);
+
+        if (profileError) {
+          console.warn('Profile creation deferred until confirmation:', profileError);
+        }
+      } else {
+        console.info('Skipping profile upsert until email confirmation is completed.');
+      }
+
+      return {
+        success: true,
+        message: 'Registro exitoso! Revisa tu email para confirmar tu cuenta.'
+      };
+    } catch (error: any) {
       console.error('Registration error:', error);
-      return false;
+      return {
+        success: false,
+        message: error?.message || 'No se pudo completar el registro.'
+      };
     }
   };
 
@@ -349,6 +428,235 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   };
 
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'user_id'>): Promise<void> => {
+    try {
+      if (isDemoMode) {
+        const newTransaction: Transaction = {
+          id: generateId(),
+          user_id: currentUser?.id ?? mockUsers[0].id,
+          ...transaction
+        };
+        setTransactions(prev => sortTransactionsByDate([newTransaction, ...prev]));
+        return;
+      }
+
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      await supabase.from('transactions').insert({
+        ...transaction,
+        goal_id: transaction.goal_id ?? null,
+        user_id: currentUser.id
+      });
+
+      await refreshData();
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      throw error;
+    }
+  };
+
+  const updateTransaction = async (id: string, updates: Partial<Transaction>): Promise<void> => {
+    try {
+      if (isDemoMode) {
+        setTransactions(prev =>
+          sortTransactionsByDate(
+            prev.map(transaction =>
+              transaction.id === id ? { ...transaction, ...updates } : transaction
+            )
+          )
+        );
+        return;
+      }
+
+      const payload = sanitizePayload({
+        ...updates,
+        goal_id: updates.goal_id ?? undefined
+      });
+
+      await supabase
+        .from('transactions')
+        .update(payload)
+        .eq('id', id);
+
+      await refreshData();
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      throw error;
+    }
+  };
+
+  const deleteTransaction = async (id: string): Promise<void> => {
+    try {
+      if (isDemoMode) {
+        setTransactions(prev => prev.filter(transaction => transaction.id !== id));
+        return;
+      }
+
+      await supabase.from('transactions').delete().eq('id', id);
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      throw error;
+    }
+  };
+
+  const approveTransaction = async (id: string): Promise<void> => {
+    await updateTransaction(id, { status: 'approved' });
+  };
+
+  const rejectTransaction = async (id: string): Promise<void> => {
+    await updateTransaction(id, { status: 'rejected' });
+  };
+
+  const addSavingGoal = async (
+    goal: Omit<SavingGoal, 'id' | 'user_id' | 'current_amount'>
+  ): Promise<void> => {
+    try {
+      if (isDemoMode) {
+        const newGoal: SavingGoal = {
+          id: generateId(),
+          user_id: currentUser?.id ?? mockUsers[0].id,
+          current_amount: 0,
+          ...goal,
+          deadline: goal.deadline || undefined
+        };
+        setSavingGoals(prev => [newGoal, ...prev]);
+        return;
+      }
+
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      await supabase.from('saving_goals').insert({
+        ...goal,
+        user_id: currentUser.id,
+        current_amount: 0,
+        deadline: goal.deadline || null
+      });
+
+      await refreshData();
+    } catch (error) {
+      console.error('Error adding saving goal:', error);
+      throw error;
+    }
+  };
+
+  const updateSavingGoal = async (id: string, updates: Partial<SavingGoal>): Promise<void> => {
+    try {
+      if (isDemoMode) {
+        setSavingGoals(prev =>
+          prev.map(goal => (goal.id === id ? { ...goal, ...updates } : goal))
+        );
+        return;
+      }
+
+      const payload = sanitizePayload({
+        ...updates,
+        deadline:
+          updates.deadline === '' ? null : updates.deadline === undefined ? undefined : updates.deadline
+      });
+
+      await supabase.from('saving_goals').update(payload).eq('id', id);
+      await refreshData();
+    } catch (error) {
+      console.error('Error updating saving goal:', error);
+      throw error;
+    }
+  };
+
+  const deleteSavingGoal = async (id: string): Promise<void> => {
+    try {
+      if (isDemoMode) {
+        setSavingGoals(prev => prev.filter(goal => goal.id !== id));
+        return;
+      }
+
+      await supabase.from('saving_goals').delete().eq('id', id);
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting saving goal:', error);
+      throw error;
+    }
+  };
+
+  const addRecurringTransaction = async (
+    recurring: Omit<RecurringTransaction, 'id' | 'user_id'>
+  ): Promise<void> => {
+    try {
+      if (isDemoMode) {
+        const newRecurring: RecurringTransaction = {
+          id: generateId(),
+          user_id: currentUser?.id ?? mockUsers[0].id,
+          ...recurring
+        };
+        setRecurringTransactions(prev => [newRecurring, ...prev]);
+        return;
+      }
+
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      await supabase
+        .from('recurring_transactions')
+        .insert({
+          ...recurring,
+          user_id: currentUser.id
+        });
+
+      await refreshData();
+    } catch (error) {
+      console.error('Error adding recurring transaction:', error);
+      throw error;
+    }
+  };
+
+  const updateRecurringTransaction = async (
+    id: string,
+    updates: Partial<RecurringTransaction>
+  ): Promise<void> => {
+    try {
+      if (isDemoMode) {
+        setRecurringTransactions(prev =>
+          prev.map(recurring =>
+            recurring.id === id ? { ...recurring, ...updates } : recurring
+          )
+        );
+        return;
+      }
+
+      const payload = sanitizePayload(updates);
+
+      await supabase
+        .from('recurring_transactions')
+        .update(payload)
+        .eq('id', id);
+
+      await refreshData();
+    } catch (error) {
+      console.error('Error updating recurring transaction:', error);
+      throw error;
+    }
+  };
+
+  const deleteRecurringTransaction = async (id: string): Promise<void> => {
+    try {
+      if (isDemoMode) {
+        setRecurringTransactions(prev => prev.filter(recurring => recurring.id !== id));
+        return;
+      }
+
+      await supabase.from('recurring_transactions').delete().eq('id', id);
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting recurring transaction:', error);
+      throw error;
+    }
+  };
+
   const contextValue: AppContextType = {
     currentUser,
     isAuthenticated,
@@ -362,17 +670,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     savingGoals,
     recurringTransactions,
     smartAlerts,
-    addTransaction: async () => {},
-    updateTransaction: async () => {},
-    deleteTransaction: async () => {},
-    approveTransaction: async () => {},
-    rejectTransaction: async () => {},
-    addSavingGoal: async () => {},
-    updateSavingGoal: async () => {},
-    deleteSavingGoal: async () => {},
-    addRecurringTransaction: async () => {},
-    updateRecurringTransaction: async () => {},
-    deleteRecurringTransaction: async () => {},
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+    approveTransaction,
+    rejectTransaction,
+    addSavingGoal,
+    updateSavingGoal,
+    deleteSavingGoal,
+    addRecurringTransaction,
+    updateRecurringTransaction,
+    deleteRecurringTransaction,
     markAlertAsRead,
     deleteAlert,
     refreshData,
