@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 export const RecurringForm: React.FC<{ recurring: RecurringTransaction | null, onClose: () => void }> = ({ recurring, onClose }) => {
   const { addRecurringTransaction, updateRecurringTransaction } = useApp();
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -40,6 +41,7 @@ export const RecurringForm: React.FC<{ recurring: RecurringTransaction | null, o
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage('');
 
     try {
       const { start_date, day_of_month, frequency } = formData;
@@ -79,6 +81,8 @@ export const RecurringForm: React.FC<{ recurring: RecurringTransaction | null, o
       onClose();
     } catch (error) {
       console.error('Error saving recurring transaction:', error);
+      const message = error instanceof Error ? error.message : 'No se pudo guardar la transaccion recurrente.';
+      setErrorMessage(message);
     } finally {
       setIsLoading(false);
     }
@@ -154,6 +158,12 @@ export const RecurringForm: React.FC<{ recurring: RecurringTransaction | null, o
             <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio *</label>
             <input type="date" value={formData.start_date} onChange={e => setFormData(p => ({...p, start_date: e.target.value}))} required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
+
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm">
+              {errorMessage}
+            </div>
+          )}
 
           <div className="flex justify-end space-x-3 pt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors">Cancelar</button>

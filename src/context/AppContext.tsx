@@ -444,11 +444,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         throw new Error('Usuario no autenticado');
       }
 
-      await supabase.from('transactions').insert({
+      const { error: insertError } = await supabase.from('transactions').insert({
         ...transaction,
         goal_id: transaction.goal_id ?? null,
         user_id: currentUser.id
       });
+
+      if (insertError) {
+        throw insertError;
+      }
 
       await refreshData();
     } catch (error) {
@@ -475,10 +479,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         goal_id: updates.goal_id ?? undefined
       });
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('transactions')
         .update(payload)
         .eq('id', id);
+
+      if (updateError) {
+        throw updateError;
+      }
 
       await refreshData();
     } catch (error) {
@@ -494,7 +502,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         return;
       }
 
-      await supabase.from('transactions').delete().eq('id', id);
+      const { error: deleteError } = await supabase.from('transactions').delete().eq('id', id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
       await refreshData();
     } catch (error) {
       console.error('Error deleting transaction:', error);
@@ -530,12 +543,16 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         throw new Error('Usuario no autenticado');
       }
 
-      await supabase.from('saving_goals').insert({
+      const { error: insertError } = await supabase.from('saving_goals').insert({
         ...goal,
         user_id: currentUser.id,
         current_amount: 0,
         deadline: goal.deadline || null
       });
+
+      if (insertError) {
+        throw insertError;
+      }
 
       await refreshData();
     } catch (error) {
@@ -559,7 +576,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           updates.deadline === '' ? null : updates.deadline === undefined ? undefined : updates.deadline
       });
 
-      await supabase.from('saving_goals').update(payload).eq('id', id);
+      const { error: updateError } = await supabase.from('saving_goals').update(payload).eq('id', id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
       await refreshData();
     } catch (error) {
       console.error('Error updating saving goal:', error);
@@ -574,7 +596,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         return;
       }
 
-      await supabase.from('saving_goals').delete().eq('id', id);
+      const { error: deleteError } = await supabase.from('saving_goals').delete().eq('id', id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
       await refreshData();
     } catch (error) {
       console.error('Error deleting saving goal:', error);
@@ -600,12 +627,16 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         throw new Error('Usuario no autenticado');
       }
 
-      await supabase
+      const { error: insertError } = await supabase
         .from('recurring_transactions')
         .insert({
           ...recurring,
           user_id: currentUser.id
         });
+
+      if (insertError) {
+        throw insertError;
+      }
 
       await refreshData();
     } catch (error) {
@@ -630,10 +661,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       const payload = sanitizePayload(updates);
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('recurring_transactions')
         .update(payload)
         .eq('id', id);
+
+      if (updateError) {
+        throw updateError;
+      }
 
       await refreshData();
     } catch (error) {
@@ -649,7 +684,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         return;
       }
 
-      await supabase.from('recurring_transactions').delete().eq('id', id);
+      const { error: deleteError } = await supabase.from('recurring_transactions').delete().eq('id', id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
       await refreshData();
     } catch (error) {
       console.error('Error deleting recurring transaction:', error);

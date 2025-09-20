@@ -12,6 +12,7 @@ interface GoalFormProps {
 export const GoalForm: React.FC<GoalFormProps> = ({ goal, onClose }) => {
   const { addSavingGoal, updateSavingGoal } = useApp();
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     target_amount: '',
@@ -31,6 +32,7 @@ export const GoalForm: React.FC<GoalFormProps> = ({ goal, onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage('');
 
     try {
       const goalData = {
@@ -48,6 +50,8 @@ export const GoalForm: React.FC<GoalFormProps> = ({ goal, onClose }) => {
       onClose();
     } catch (error) {
       console.error('Error saving goal:', error);
+      const message = error instanceof Error ? error.message : 'No se pudo guardar la meta.';
+      setErrorMessage(message);
     } finally {
       setIsLoading(false);
     }
@@ -124,6 +128,12 @@ export const GoalForm: React.FC<GoalFormProps> = ({ goal, onClose }) => {
             </div>
           </div>
           
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm">
+              {errorMessage}
+            </div>
+          )}
+
           <div className="flex justify-end space-x-3 pt-4">
             <button
               type="button"
