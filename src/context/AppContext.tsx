@@ -272,6 +272,56 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     return { totalIncome, totalExpenses, totalSavings, balance };
   };
 
+  const markAlertAsRead = async (id: string): Promise<void> => {
+    try {
+      if (isDemoMode) {
+        setSmartAlerts(prev => 
+          prev.map(alert => 
+            alert.id === id ? { ...alert, read: true } : alert
+          )
+        );
+        return;
+      }
+
+      const { error } = await supabase
+        .from('smart_alerts')
+        .update({ read: true })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSmartAlerts(prev => 
+        prev.map(alert => 
+          alert.id === id ? { ...alert, read: true } : alert
+        )
+      );
+    } catch (error) {
+      console.error('Error marking alert as read:', error);
+      throw error;
+    }
+  };
+
+  const deleteAlert = async (id: string): Promise<void> => {
+    try {
+      if (isDemoMode) {
+        setSmartAlerts(prev => prev.filter(alert => alert.id !== id));
+        return;
+      }
+
+      const { error } = await supabase
+        .from('smart_alerts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSmartAlerts(prev => prev.filter(alert => alert.id !== id));
+    } catch (error) {
+      console.error('Error deleting alert:', error);
+      throw error;
+    }
+  };
+
   const contextValue: AppContextType = {
     currentUser,
     isAuthenticated,
@@ -296,8 +346,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     addRecurringTransaction: async () => {},
     updateRecurringTransaction: async () => {},
     deleteRecurringTransaction: async () => {},
-    markAlertAsRead: async () => {},
-    deleteAlert: async () => {},
+    markAlertAsRead,
+    deleteAlert,
     refreshData,
     getDashboardStats,
   };
