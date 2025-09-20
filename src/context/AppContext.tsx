@@ -25,6 +25,30 @@ const sanitizePayload = <T extends Record<string, unknown>>(payload: T) =>
     Object.entries(payload).filter(([, value]) => value !== undefined)
   ) as Partial<T>;
 
+const applyGoalProgress = (goals: SavingGoal[], transactionsList: Transaction[]) => {
+  const progressByGoal = new Map<string, number>();
+
+  transactionsList.forEach(transaction => {
+    if (
+      transaction.type === 'saving' &&
+      transaction.status === 'approved' &&
+      transaction.goal_id
+    ) {
+      const amount = Number(transaction.amount) || 0;
+      const existing = progressByGoal.get(transaction.goal_id) ?? 0;
+      progressByGoal.set(transaction.goal_id, existing + amount);
+    }
+  });
+
+  return goals.map(goal => {
+    const progressAmount = progressByGoal.get(goal.id);
+    const currentAmount =
+      progressAmount !== undefined ? progressAmount : Number(goal.current_amount ?? 0);
+
+    return { ...goal, current_amount: currentAmount };
+  });
+};
+
 interface AppContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
@@ -274,10 +298,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         throw new Error('Error loading user data');
       }
 
-      setTransactions(transactionsRes.data || []);
-      setSavingGoals(goalsRes.data || []);
-      setRecurringTransactions(recurringRes.data || []);
-      setSmartAlerts(alertsRes.data || []);
+      const transactionsData = transactionsRes.data || [];
+      const goalsData = goalsRes.data || [];
+      const recurringData = recurringRes.data || [];
+      const alertsData = alertsRes.data || [];
+
+      const goalsWithProgress = applyGoalProgress(goalsData, transactionsData);
+
+      setTransactions(transactionsData);
+      setSavingGoals(goalsWithProgress);
+      setRecurringTransactions(recurringData);
+      setSmartAlerts(alertsData);
     } catch (error) {
       console.error('Error loading user data:', error);
       clearData();
@@ -436,7 +467,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           user_id: currentUser?.id ?? mockUsers[0].id,
           ...transaction
         };
-        setTransactions(prev => sortTransactionsByDate([newTransaction, ...prev]));
+        setTransactions(prev => {
+          const updatedTransactions = sortTransactionsByDate([newTransaction, ...prev]);
+          setSavingGoals(currentGoals => applyGoalProgress(currentGoals, updatedTransactions));
+          return updatedTransactions;
+        });
         return;
       }
 
@@ -464,13 +499,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const updateTransaction = async (id: string, updates: Partial<Transaction>): Promise<void> => {
     try {
       if (isDemoMode) {
-        setTransactions(prev =>
-          sortTransactionsByDate(
+        setTransactions(prev => {
+          const updatedTransactions = sortTransactionsByDate(
             prev.map(transaction =>
               transaction.id === id ? { ...transaction, ...updates } : transaction
             )
-          )
-        );
+          );
+          setSavingGoals(currentGoals => applyGoalProgress(currentGoals, updatedTransactions));
+          return updatedTransactions;
+        });
         return;
       }
 
@@ -498,7 +535,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const deleteTransaction = async (id: string): Promise<void> => {
     try {
       if (isDemoMode) {
-        setTransactions(prev => prev.filter(transaction => transaction.id !== id));
+        setTransactions(prev => {
+          const updatedTransactions = prev.filter(transaction => transaction.id !== id);
+          setSavingGoals(currentGoals => applyGoalProgress(currentGoals, updatedTransactions));
+          return updatedTransactions;
+        });
         return;
       }
 
