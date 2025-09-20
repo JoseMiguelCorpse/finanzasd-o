@@ -109,6 +109,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      setIsLoading(true);
       clearAll(); // Limpiar estado antes de iniciar sesión
 
       if (email === demoCredentials.email && password === demoCredentials.password) {
@@ -130,11 +131,37 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         console.error('Login error:', error);
         return false;
       }
+
+      // Cargar el perfil del usuario
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        console.error('Error loading profile:', profileError);
+        return false;
+      }
+
+      // Establecer el usuario actual
+      setCurrentUser({
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        avatar: profile.avatar
+      });
+
+      // Cargar los datos del usuario
+      await loadUserData(data.user.id);
+      
       return true;
     } catch (error) {
       console.error('Login error:', error);
       clearAll();
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
