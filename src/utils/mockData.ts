@@ -71,7 +71,6 @@ export const mockTransactions: Transaction[] = Array.from({ length: 50 }, () => 
     category: faker.helpers.arrayElement(categories[type]),
     type,
     date: date.toISOString(),
-    is_shared: faker.datatype.boolean(),
     status: faker.helpers.arrayElement([
       "approved",
       "pending",
@@ -88,6 +87,7 @@ export const mockSavingGoals: SavingGoal[] = [
     name: "Vacaciones de verano",
     target_amount: 2000,
     current_amount: 800,
+    is_shared: faker.datatype.boolean(),
     deadline: addDays(new Date(), 120).toISOString(),
   },
   {
@@ -96,6 +96,7 @@ export const mockSavingGoals: SavingGoal[] = [
     name: "Fondo de emergencia",
     target_amount: 5000,
     current_amount: 2300,
+    is_shared: faker.datatype.boolean(),
     deadline: addDays(new Date(), 365).toISOString(),
   },
   {
@@ -104,6 +105,7 @@ export const mockSavingGoals: SavingGoal[] = [
     name: "Nuevo ordenador",
     target_amount: 1200,
     current_amount: 400,
+    is_shared: faker.datatype.boolean(),
     deadline: addDays(new Date(), 90).toISOString(),
   },
 ];

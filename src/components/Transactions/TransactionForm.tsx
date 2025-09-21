@@ -19,7 +19,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
     category: '',
     type: 'expense' as 'income' | 'expense' | 'saving',
     date: new Date().toISOString().split('T')[0],
-    is_shared: false,
     goal_id: '',
     status: 'approved' as 'pending' | 'approved' | 'rejected'
   });
@@ -32,7 +31,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
         category: transaction.category,
         type: transaction.type,
         date: transaction.date.split('T')[0],
-        is_shared: transaction.is_shared,
         goal_id: transaction.goal_id || '',
         status: transaction.status
       });
@@ -57,7 +55,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
         category: formData.category,
         type: formData.type,
         date: new Date(formData.date).toISOString(),
-        is_shared: formData.is_shared,
         goal_id: formData.goal_id || undefined,
         status: formData.status
       };
@@ -211,7 +208,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Estado
@@ -227,17 +224,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ transaction, o
               </select>
             </div>
 
-            <div className="flex items-center justify-center">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.is_shared}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_shared: e.target.checked }))}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Transacción compartida</span>
-              </label>
-            </div>
           </div>
 
           {errorMessage && (

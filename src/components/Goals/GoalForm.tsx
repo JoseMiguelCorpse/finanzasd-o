@@ -16,7 +16,8 @@ export const GoalForm: React.FC<GoalFormProps> = ({ goal, onClose }) => {
   const [formData, setFormData] = useState({
     name: '',
     target_amount: '',
-    deadline: ''
+    deadline: '',
+    is_shared: false
   });
 
   useEffect(() => {
@@ -24,7 +25,8 @@ export const GoalForm: React.FC<GoalFormProps> = ({ goal, onClose }) => {
       setFormData({
         name: goal.name,
         target_amount: goal.target_amount.toString(),
-        deadline: goal.deadline ? goal.deadline.split('T')[0] : ''
+        deadline: goal.deadline ? goal.deadline.split('T')[0] : '',
+        is_shared: goal.is_shared ?? false
       });
     }
   }, [goal]);
@@ -38,7 +40,8 @@ export const GoalForm: React.FC<GoalFormProps> = ({ goal, onClose }) => {
       const goalData = {
         name: formData.name,
         target_amount: parseFloat(formData.target_amount),
-        deadline: formData.deadline || undefined
+        deadline: formData.deadline || undefined,
+        is_shared: formData.is_shared
       };
 
       if (goal) {
@@ -127,7 +130,18 @@ export const GoalForm: React.FC<GoalFormProps> = ({ goal, onClose }) => {
               />
             </div>
           </div>
-          
+          <div className="flex items-center">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.is_shared}
+                onChange={(e) => setFormData(prev => ({ ...prev, is_shared: e.target.checked }))}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="ml-2 text-sm text-gray-700">Meta compartida</span>
+            </label>
+          </div>
+
           {errorMessage && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm">
               {errorMessage}
