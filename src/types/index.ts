@@ -13,7 +13,6 @@ export interface Transaction {
   category: string;
   type: 'income' | 'expense' | 'saving';
   date: string;
-  is_shared: boolean;
   goal_id?: string;
   status: 'pending' | 'approved' | 'rejected';
 }
@@ -25,6 +24,7 @@ export interface SavingGoal {
   target_amount: number;
   current_amount: number;
   deadline?: string;
+  is_shared: boolean;
 }
 
 export interface RecurringTransaction {
@@ -38,6 +38,7 @@ export interface RecurringTransaction {
   day_of_month: number;
   start_date: string;
   next_due_date: string;
+  is_shared: boolean;
 }
 
 export interface SmartAlert {
