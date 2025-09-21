@@ -17,6 +17,7 @@ export const RecurringForm: React.FC<{ recurring: RecurringTransaction | null, o
     frequency: 'monthly' as 'monthly' | 'yearly',
     day_of_month: '1',
     start_date: new Date().toISOString().split('T')[0],
+    is_shared: false,
   });
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export const RecurringForm: React.FC<{ recurring: RecurringTransaction | null, o
         frequency: recurring.frequency,
         day_of_month: recurring.day_of_month?.toString() || '1',
         start_date: recurring.start_date.split('T')[0],
+        is_shared: recurring.is_shared,
       });
     }
   }, [recurring]);
@@ -70,6 +72,7 @@ export const RecurringForm: React.FC<{ recurring: RecurringTransaction | null, o
         day_of_month: parseInt(formData.day_of_month),
         start_date: new Date(formData.start_date).toISOString(),
         next_due_date: format(nextDueDate, 'yyyy-MM-dd'),
+        is_shared: formData.is_shared,
       };
 
       if (recurring) {
@@ -157,6 +160,18 @@ export const RecurringForm: React.FC<{ recurring: RecurringTransaction | null, o
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio *</label>
             <input type="date" value={formData.start_date} onChange={e => setFormData(p => ({...p, start_date: e.target.value}))} required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+
+          <div className="flex items-center">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.is_shared}
+                onChange={(e) => setFormData(prev => ({ ...prev, is_shared: e.target.checked }))}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="ml-2 text-sm text-gray-700">Transacción recurrente compartida</span>
+            </label>
           </div>
 
           {errorMessage && (
