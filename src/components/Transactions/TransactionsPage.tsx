@@ -12,8 +12,7 @@ export const TransactionsPage: React.FC = () => {
     transactions, 
     approveTransaction, 
     rejectTransaction, 
-    deleteTransaction,
-    updateTransaction 
+    deleteTransaction
   } = useApp();
   
   const [showForm, setShowForm] = useState(false);

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User, Transaction, SavingGoal, RecurringTransaction, SmartAlert, DashboardStats } from '../types';
 import { supabase } from '../lib/supabase';
 import { 
@@ -11,8 +12,8 @@ import {
 } from '../utils/mockData';
 
 const generateId = () => {
-  if (typeof globalThis !== 'undefined' && (globalThis as any).crypto?.randomUUID) {
-    return (globalThis as any).crypto.randomUUID();
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
   }
   return `id-${Math.random().toString(36).slice(2, 11)}`;
 };
@@ -24,6 +25,11 @@ const sanitizePayload = <T extends Record<string, unknown>>(payload: T) =>
   Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined)
   ) as Partial<T>;
+
+const getMetadataString = (metadata: Record<string, unknown> | null | undefined, key: string) => {
+  const value = metadata?.[key];
+  return typeof value === 'string' ? value : null;
+};
 
 const applyGoalProgress = (goals: SavingGoal[], transactionsList: Transaction[]) => {
   const progressByGoal = new Map<string, number>();
@@ -112,30 +118,30 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const isAuthenticated = !!currentUser;
 
-  // Función unificada para limpiar datos
-  const clearData = () => {
+  // FunciÃ³n unificada para limpiar datos
+  const clearData = useCallback(() => {
     setTransactions([]);
     setSavingGoals([]);
     setRecurringTransactions([]);
     setSmartAlerts([]);
-  };
+  }, []);
 
-  // Función unificada para limpiar el almacenamiento
-  const clearStorage = () => {
+  // FunciÃ³n unificada para limpiar el almacenamiento
+  const clearStorage = useCallback(() => {
     localStorage.removeItem('supabase.auth.token');
     localStorage.removeItem('finanzasduo.session');
     sessionStorage.clear();
-  };
+  }, []);
 
-  // Función para limpiar completamente el estado
-  const clearAll = () => {
+  // FunciÃ³n para limpiar completamente el estado
+  const clearAll = useCallback(() => {
     setCurrentUser(null);
     setIsDemoMode(false);
     clearData();
     clearStorage();
-  };
+  }, [clearData, clearStorage]);
 
-  // Función para cerrar sesión
+  // FunciÃ³n para cerrar sesiÃ³n
   const logout = async (): Promise<void> => {
     try {
       await supabase.auth.signOut();
@@ -150,7 +156,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      clearAll(); // Limpiar estado antes de iniciar sesión
+      clearAll(); // Limpiar estado antes de iniciar sesiÃ³n
 
       if (email === demoCredentials.email && password === demoCredentials.password) {
         setIsLoading(true);
@@ -179,13 +185,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         .single();
 
       let profile = profileData;
+      const metadata = data.user.user_metadata as Record<string, unknown> | null | undefined;
 
       if (profileError || !profile) {
         const fallbackProfile = {
           id: data.user.id,
           email: data.user.email ?? email,
-          name: (data.user.user_metadata as any)?.name ?? data.user.email ?? 'Sin nombre',
-          avatar: (data.user.user_metadata as any)?.avatar ?? null
+          name: getMetadataString(metadata, 'name') ?? data.user.email ?? 'Sin nombre',
+          avatar: getMetadataString(metadata, 'avatar')
         };
 
         const { data: createdProfile, error: createProfileError } = await supabase
@@ -254,11 +261,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       }
 
       if (data.session) {
+        const metadata = data.user.user_metadata as Record<string, unknown> | null | undefined;
         const profilePayload = {
           id: data.user.id,
           email,
           name,
-          avatar: (data.user.user_metadata as any)?.avatar ?? null
+          avatar: getMetadataString(metadata, 'avatar')
         };
 
         const { error: profileError } = await supabase
@@ -276,16 +284,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         success: true,
         message: 'Registro exitoso! Revisa tu email para confirmar tu cuenta.'
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Registration error:', error);
+      const message = error instanceof Error ? error.message : 'No se pudo completar el registro.';
       return {
         success: false,
-        message: error?.message || 'No se pudo completar el registro.'
+        message
       };
     }
   };
 
-  const loadUserData = async (userId: string) => {
+  const loadUserData = useCallback(async (userId: string) => {
     try {
       const [transactionsRes, goalsRes, recurringRes, alertsRes] = await Promise.all([
         supabase.from('transactions').select('*').eq('user_id', userId).order('date', { ascending: false }),
@@ -313,7 +322,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       console.error('Error loading user data:', error);
       clearData();
     }
-  };
+  }, [clearData]);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -362,7 +371,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [clearAll, loadUserData]);
 
   const updateProfile = async (updates: Partial<User>): Promise<void> => {
     if (!currentUser) return;
@@ -387,12 +396,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   };
 
-  // Implementación del resto de las funciones del contexto...
-  const refreshData = async () => {
+  // ImplementaciÃ³n del resto de las funciones del contexto...
+  const refreshData = useCallback(async () => {
     if (currentUser && !isDemoMode) {
       await loadUserData(currentUser.id);
     }
-  };
+  }, [currentUser, isDemoMode, loadUserData]);
 
   const getDashboardStats = (): DashboardStats => {
     const approvedTransactions = transactions.filter(t => t.status === 'approved');

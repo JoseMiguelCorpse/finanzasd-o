@@ -1,7 +1,8 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import type { SmartAlert } from '../../types';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, PiggyBank, Wallet, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { TrendingUp, TrendingDown, PiggyBank, Wallet, AlertCircle, CheckCircle, Info, type LucideIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -16,12 +17,20 @@ export const Dashboard: React.FC = () => {
   } = useApp();
   
   const stats = getDashboardStats();
+  interface StatCardProps {
+    title: string;
+    value: number;
+    icon: LucideIcon;
+    color: string;
+    bgColor: string;
+  }
+
   const recentTransactions = transactions
     .filter(t => t.status === 'approved')
     .slice(0, 5);
   const unreadAlerts = smartAlerts.filter(a => !a.read);
 
-  const StatCard = ({ title, value, icon: Icon, color, bgColor }: any) => (
+  const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, bgColor }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -42,7 +51,7 @@ export const Dashboard: React.FC = () => {
     </motion.div>
   );
 
-  const AlertIcon = ({ type }: { type: string }) => {
+  const AlertIcon = ({ type }: { type: SmartAlert['type'] }) => {
     switch (type) {
       case 'warning':
         return <AlertCircle className="h-5 w-5 text-yellow-500" />;

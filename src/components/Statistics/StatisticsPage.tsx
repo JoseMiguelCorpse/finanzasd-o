@@ -83,9 +83,7 @@ export const StatisticsPage: React.FC = () => {
     },
     tooltip: {
       trigger: 'item',
-      formatter: function(params: any) {
-        return `${params.name}: €${params.value.toFixed(2)} (${params.percent}%)`;
-      }
+      formatter: (params: { name: string; value: number; percent: number }) => `${params.name}: €${params.value.toFixed(2)} (${params.percent}%)`,
     },
     legend: {
       orient: 'horizontal',
@@ -134,9 +132,9 @@ export const StatisticsPage: React.FC = () => {
       axisPointer: {
         type: 'cross'
       },
-      formatter: function(params: any) {
+      formatter: (params: Array<{ axisValue: string; marker: string; seriesName: string; value: number }>) => {
         let result = `<strong>${params[0].axisValue}</strong><br/>`;
-        params.forEach((param: any) => {
+        params.forEach((param) => {
           result += `${param.marker} ${param.seriesName}: €${param.value.toFixed(2)}<br/>`;
         });
         return result;
@@ -215,9 +213,9 @@ export const StatisticsPage: React.FC = () => {
       axisPointer: {
         type: 'shadow'
       },
-      formatter: function(params: any) {
+      formatter: (params: Array<{ axisValue: string; marker: string; seriesName: string; value: number }>) => {
         let result = `<strong>${params[0].axisValue}</strong><br/>`;
-        params.forEach((param: any) => {
+        params.forEach((param) => {
           result += `${param.marker} ${param.seriesName}: €${param.value.toFixed(2)}<br/>`;
         });
         return result;

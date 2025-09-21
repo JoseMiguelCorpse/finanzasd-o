@@ -48,7 +48,7 @@ export const RecurringForm: React.FC<{ recurring: RecurringTransaction | null, o
     try {
       const { start_date, day_of_month, frequency } = formData;
       const startDate = new Date(start_date);
-      let nextDueDate = new Date(startDate);
+      const nextDueDate = new Date(startDate);
       
       if (frequency === 'monthly') {
         nextDueDate.setMonth(new Date().getMonth());
@@ -122,7 +122,7 @@ export const RecurringForm: React.FC<{ recurring: RecurringTransaction | null, o
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
-              <select value={formData.type} onChange={e => setFormData(p => ({...p, type: e.target.value as any, category: ''}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select value={formData.type} onChange={e => setFormData(prev => ({ ...prev, type: e.target.value as 'expense' | 'saving', category: '' }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="expense">Gasto</option>
                 <option value="saving">Ahorro</option>
               </select>
@@ -144,7 +144,7 @@ export const RecurringForm: React.FC<{ recurring: RecurringTransaction | null, o
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Frecuencia *</label>
-              <select value={formData.frequency} onChange={e => setFormData(p => ({...p, frequency: e.target.value as any}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select value={formData.frequency} onChange={e => setFormData(prev => ({ ...prev, frequency: e.target.value as 'monthly' | 'yearly' }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="monthly">Mensual</option>
                 <option value="yearly">Anual</option>
               </select>

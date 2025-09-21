@@ -26,8 +26,9 @@ export const ProfilePage: React.FC = () => {
         avatar: formData.avatar
       });
       setSuccessMessage('Perfil actualizado correctamente');
-    } catch (err: any) {
-      setError(err.message || 'Error al actualizar el perfil');
+    } catch (err: unknown) {
+      const error = err as { message?: string } | null;
+      setError(error?.message || 'Error al actualizar el perfil');
     } finally {
       setIsLoading(false);
     }
